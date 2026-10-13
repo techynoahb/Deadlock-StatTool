@@ -1,0 +1,27 @@
+[project]
+name = "deadlock-cli"
+version = "0.1.0"
+description = "Check your Deadlock stats from the terminal"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "typer>=0.12",
+    "rich>=13",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+deadlock = "deadlock_cli.main:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/deadlock_cli"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
