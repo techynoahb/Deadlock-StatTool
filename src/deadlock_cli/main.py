@@ -11,6 +11,7 @@ from rich.console import Console
 from rich.table import Table
 
 from . import config, stats
+from . import draft as draft_model
 from .api import APIError, DeadlockAPI
 
 app = typer.Typer(
@@ -47,6 +48,20 @@ def resolve_account(account: Optional[str]) -> int:
 def fail(error: APIError) -> None:
     console.print(f"[red]Error:[/] {error}")
     raise typer.Exit(1)
+
+
+def resolve_heroes(raw: str, names: dict[int, str]) -> list[int]:
+    """Comma-separated hero names -> hero IDs. Exits with a clear message on a bad name."""
+    hero_ids = []
+    for name in (n.strip() for n in raw.split(",")):
+        if not name:
+            continue
+        hero_id = stats.find_hero(name, names)
+        if hero_id is None:
+            console.print(f"[red]Couldn't find a hero called '{name}'.[/]")
+            raise typer.Exit(1)
+        hero_ids.append(hero_id)
+    return hero_ids
 
 
 def result_text(won: bool) -> str:
@@ -321,6 +336,94 @@ def coach(
     else:
         console.print("\n[green]You're at or above average everywhere that matters. Nice.[/]")
     console.print()
+
+
+@app.command()
+def items(
+    hero: str = typer.Argument(..., help="Hero name, e.g. Haze."),
+    vs: Optional[str] = typer.Option(None, "--vs", help="Comma-separated enemy heroes to narrow the matchup."),
+    min_matches: int = typer.Option(30, "--min-matches", help="Hide items with fewer matches."),
+    top: int = typer.Option(15, "--top", help="How many items to show."),
+    days: int = typer.Option(90, "--days", "-d", help="How many days of matches to include."),
+):
+    """Highest win-rate items for a hero, optionally against specific enemies."""
+    since = int(time.time()) - days * 86400
+    try:
+        api = get_api()
+        names = api.hero_names()
+    except APIError as e:
+        fail(e)
+    hero_id = stats.find_hero(hero, names)
+    if hero_id is None:
+        console.print(f"[red]Couldn't find a hero called '{hero}'.[/]")
+        raise typer.Exit(1)
+    enemy_ids = resolve_heroes(vs, names) if vs else None
+
+    try:
+        item_stats = api.item_stats(hero_id, enemy_hero_ids=enemy_ids, min_matches=min_matches, since_unix=since)
+        items_by_id = stats.purchasable_items(api.items())
+    except APIError as e:
+        fail(e)
+    rows = stats.item_rows(item_stats, items_by_id, min_matches=min_matches)[:top]
+    if not rows:
+        console.print(f"No items with at least {min_matches} matches. Try --min-matches 10.")
+        return
+
+    title = f"Best items for {names[hero_id]}"
+    if enemy_ids:
+        title += " vs " + ", ".join(names[h] for h in enemy_ids)
+    table = Table(title=title)
+    table.add_column("Item")
+    table.add_column("Slot")
+    table.add_column("Tier", justify="right")
+    table.add_column("Win %", justify="right")
+    table.add_column("Matches", justify="right")
+    for r in rows:
+        table.add_row(r["name"], r["slot"], str(r["tier"]), pct_color(r["win_rate"]), f"{r['matches']:,}")
+    console.print(table)
+    console.print(f"Last {days} days, min {min_matches} matches per item.")
+
+
+@app.command()
+def draft(
+    allies: str = typer.Option(..., "--allies", help="Comma-separated hero names on your team."),
+    enemies: str = typer.Option(..., "--enemies", help="Comma-separated hero names on the enemy team."),
+    min_matches: int = typer.Option(50, "--min-matches", help="Hide hero matchups with fewer matches."),
+    days: int = typer.Option(90, "--days", "-d", help="How many days of matchup data to use."),
+):
+    """Predict win probability for a draft, based on real hero-vs-hero matchup data."""
+    since = int(time.time()) - days * 86400
+    try:
+        api = get_api()
+        names = api.hero_names()
+    except APIError as e:
+        fail(e)
+    ally_ids = resolve_heroes(allies, names)
+    enemy_ids = resolve_heroes(enemies, names)
+    if not ally_ids or not enemy_ids:
+        console.print("[red]Need at least one hero on each side.[/]")
+        raise typer.Exit(1)
+
+    try:
+        counter_stats = api.hero_counter_stats(min_matches=min_matches, since_unix=since)
+    except APIError as e:
+        fail(e)
+    ratings = draft_model.fit_hero_ratings(counter_stats)
+    probability = draft_model.win_probability(ratings, ally_ids, enemy_ids)
+
+    console.print(f"\n[bold]Predicted win chance:[/] {pct_color(probability)}")
+    table = Table(title="Hero ratings (higher is stronger right now)")
+    table.add_column("Hero")
+    table.add_column("Side")
+    table.add_column("Rating", justify="right")
+    for r in draft_model.rating_breakdown(ratings, ally_ids, enemy_ids):
+        side_text = "[cyan]Ally[/]" if r["side"] == "ally" else "[magenta]Enemy[/]"
+        table.add_row(names.get(r["hero_id"], f"Hero {r['hero_id']}"), side_text, f"{r['rating']:+.2f}")
+    console.print(table)
+    console.print(
+        f"\n[dim]Based on hero-vs-hero win rates over the last {days} days. "
+        "Doesn't account for team synergy or how good you are with these heroes.[/]\n"
+    )
 
 
 if __name__ == "__main__":

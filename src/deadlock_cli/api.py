@@ -98,6 +98,28 @@ class DeadlockAPI:
             params["min_unix_timestamp"] = since_unix
         return self._get("/v1/analytics/hero-stats", **params)
 
+    def hero_counter_stats(self, min_matches: int = 50, since_unix: int | None = None) -> list[dict]:
+        """Win rate for every (hero, enemy hero) pair that's faced off enough. Bulk data, cached a day."""
+        params: dict[str, Any] = {"min_matches": min_matches}
+        if since_unix is not None:
+            params["min_unix_timestamp"] = since_unix
+        return self._cached("hero_counter_stats", "/v1/analytics/hero-counter-stats", **params)
+
+    def item_stats(
+        self,
+        hero_id: int,
+        enemy_hero_ids: list[int] | None = None,
+        min_matches: int = 30,
+        since_unix: int | None = None,
+    ) -> list[dict]:
+        """Win rate per item for a hero, optionally narrowed to a specific enemy matchup."""
+        params: dict[str, Any] = {"hero_ids": hero_id, "min_matches": min_matches}
+        if enemy_hero_ids:
+            params["enemy_hero_ids"] = ",".join(str(h) for h in enemy_hero_ids)
+        if since_unix is not None:
+            params["min_unix_timestamp"] = since_unix
+        return self._get("/v1/analytics/item-stats", **params)
+
     # ---- assets --------------------------------------------------------------
 
     def hero_names(self) -> dict[int, str]:
@@ -107,3 +129,7 @@ class DeadlockAPI:
     def rank_names(self) -> dict[int, str]:
         ranks = self._cached("ranks", "/v1/assets/ranks")
         return {r["tier"]: r["name"] for r in ranks}
+
+    def items(self) -> list[dict]:
+        """Every game asset (heroes' abilities and weapons too). Filter to purchasable items in stats.py."""
+        return self._cached("items", "/v1/assets/items")

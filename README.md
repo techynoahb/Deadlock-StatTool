@@ -24,9 +24,15 @@ deadlock summary                    # win rate, KDA, rank, top heroes, recent tr
 deadlock recent -n 20               # last 20 matches
 deadlock heroes --min-games 5       # per-hero stats
 deadlock coach haze                 # you vs. the average player at your rank on Haze
+deadlock items haze --vs infernus   # highest win-rate items for Haze, vs. a specific enemy
+deadlock draft --allies haze,infernus,wraith --enemies seven,abrams,vindicta   # predicted win %
 ```
 
 `coach` options: `--days 90` for a longer window, `--tier 8` to compare against a different rank.
+
+`draft` fits a logistic regression ("power rating" per hero) on real hero-vs-hero win rates and
+predicts `sigmoid(ally ratings - enemy ratings)`. It doesn't know about team synergy or your
+personal skill with a hero — see Roadmap below for why.
 
 Every command also takes an account ID (or SteamID64) to look up someone else:
 
@@ -42,6 +48,7 @@ deadlock summary 123456789
 | `src/deadlock_cli/stats.py` | All the math (win rate, KDA, souls/min, trends). No network calls |
 | `src/deadlock_cli/main.py` | The commands and table output (Typer + Rich) |
 | `src/deadlock_cli/config.py` | Saves your default account in `~/.config/deadlock-cli/` |
+| `src/deadlock_cli/draft.py` | The draft win predictor: a logistic-regression hero rating model |
 
 ## Tests
 
@@ -55,4 +62,9 @@ Tests use fake data shaped like real API responses, so they run offline.
 
 - [x] Stats commands: `summary`, `recent`, `heroes`, `search`
 - [x] `coach`: compare your stats on a hero to the average at your rank, with tips
-- [ ] ML: predict win probability from a draft, recommend items
+- [x] `items`: highest win-rate items for a hero (optionally vs. a specific enemy)
+- [x] `draft`: predict win probability from a draft. The community API has no endpoint
+      with raw per-match draft data (all 12 heroes + outcome), so this fits a
+      Bradley-Terry style logistic regression on aggregated hero-vs-hero win rates
+      instead — a per-hero "power rating" rather than a model trained on real drafts.
+      It can't see team synergy or personal skill with a hero.

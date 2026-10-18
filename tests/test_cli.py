@@ -3,7 +3,7 @@
 import pytest
 from typer.testing import CliRunner
 
-from deadlock_cli import config, main, stats
+from deadlock_cli import config, draft, main, stats
 
 
 def make_match(match_id, hero_id, won, kills=5, deaths=3, assists=8, net_worth=30000, minutes=30, badge=None):
@@ -56,6 +56,24 @@ BRACKET_ANALYTICS = [
 ]
 
 
+# Item assets: two purchasable items plus one ability that should be filtered out
+ITEMS = [
+    {"id": 100, "name": "Extra Health", "type": "upgrade", "item_slot_type": "vitality", "item_tier": 1},
+    {"id": 200, "name": "Bad Item", "type": "upgrade", "item_slot_type": "weapon", "item_tier": 1},
+    {"id": 300, "name": "Some Ability", "type": "ability", "item_slot_type": "", "item_tier": 0},
+]
+ITEM_STATS = [
+    {"item_id": 100, "wins": 60, "matches": 100, "players": 80},
+    {"item_id": 200, "wins": 30, "matches": 100, "players": 90},
+]
+
+# Infernus (1) beats Wraith (3) 80% of the time
+COUNTER_STATS = [
+    {"hero_id": 1, "enemy_hero_id": 3, "wins": 80, "matches_played": 100},
+    {"hero_id": 3, "enemy_hero_id": 1, "wins": 20, "matches_played": 100},
+]
+
+
 class FakeAPI:
     def analytics_hero_stats(self, account_id=None, min_badge=None, max_badge=None, since_unix=None):
         if account_id is not None:
@@ -74,10 +92,19 @@ class FakeAPI:
                  "matches_played_last_30d": 40}]
 
     def hero_names(self):
-        return {1: "Infernus", 7: "Haze"}
+        return {1: "Infernus", 7: "Haze", 3: "Wraith"}
 
     def rank_names(self):
         return {8: "Ascendant"}
+
+    def items(self):
+        return ITEMS
+
+    def item_stats(self, hero_id, enemy_hero_ids=None, min_matches=30, since_unix=None):
+        return ITEM_STATS
+
+    def hero_counter_stats(self, min_matches=50, since_unix=None):
+        return COUNTER_STATS
 
 
 @pytest.fixture
@@ -162,6 +189,35 @@ def test_compare_flags_weaknesses():
     assert any("souls" in t for t in tips) and any("die" in t for t in tips)
 
 
+def test_item_rows_filters_abilities_and_sorts_by_win_rate():
+    rows = stats.item_rows(ITEM_STATS, stats.purchasable_items(ITEMS))
+    assert [r["item_id"] for r in rows] == [100, 200]  # best win rate first
+    assert rows[0]["win_rate"] == 60
+
+
+def test_item_rows_respects_min_matches():
+    assert stats.item_rows(ITEM_STATS, stats.purchasable_items(ITEMS), min_matches=200) == []
+
+
+# ---- draft ------------------------------------------------------------------------
+
+
+def test_fit_hero_ratings_ranks_the_winner_higher():
+    ratings = draft.fit_hero_ratings(COUNTER_STATS)
+    assert ratings[1] > ratings[3]
+
+
+def test_win_probability_favors_the_stronger_side():
+    ratings = draft.fit_hero_ratings(COUNTER_STATS)
+    assert draft.win_probability(ratings, [1], [3]) > 50
+    assert draft.win_probability(ratings, [3], [1]) < 50
+
+
+def test_unseen_hero_defaults_to_neutral_rating():
+    ratings = draft.fit_hero_ratings(COUNTER_STATS)
+    assert draft.win_probability(ratings, [1], [999]) > draft.win_probability(ratings, [999], [999])
+
+
 def test_coach_defaults_to_most_played_and_own_rank(runner):
     result = runner.invoke(main.app, ["coach", "-a", "123"])
     assert result.exit_code == 0, result.output
@@ -177,3 +233,27 @@ def test_coach_unknown_and_unplayed_hero(runner):
 def test_missing_account_explains_what_to_do(runner):
     result = runner.invoke(main.app, ["summary"])
     assert result.exit_code == 1 and "set-me" in result.output
+
+
+def test_items(runner):
+    result = runner.invoke(main.app, ["items", "infernus"])
+    assert result.exit_code == 0, result.output
+    assert "Extra Health" in result.output and "Bad Item" in result.output
+    assert "Some Ability" not in result.output
+
+
+def test_items_unknown_hero(runner):
+    result = runner.invoke(main.app, ["items", "nobody"])
+    assert result.exit_code == 1 and "Couldn't find" in result.output
+
+
+def test_draft(runner):
+    result = runner.invoke(main.app, ["draft", "--allies", "infernus", "--enemies", "wraith"])
+    assert result.exit_code == 0, result.output
+    assert "Predicted win chance" in result.output
+    assert "Infernus" in result.output and "Wraith" in result.output
+
+
+def test_draft_unknown_hero(runner):
+    result = runner.invoke(main.app, ["draft", "--allies", "nobody", "--enemies", "wraith"])
+    assert result.exit_code == 1 and "Couldn't find" in result.output

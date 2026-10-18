@@ -187,6 +187,34 @@ def coach_tips(rows: list[dict], threshold: float = 10.0, limit: int = 3) -> lis
     return [TIPS[r["key"]] for r in weak[:limit]]
 
 
+def purchasable_items(items: list[dict]) -> dict[int, dict]:
+    """Keep only shop items (the assets endpoint also returns abilities and weapons)."""
+    return {
+        i["id"]: {"name": i["name"], "slot": i.get("item_slot_type", ""), "tier": i.get("item_tier", 0)}
+        for i in items
+        if i.get("type") == "upgrade"
+    }
+
+
+def item_rows(item_stats: list[dict], items: dict[int, dict], min_matches: int = 30) -> list[dict]:
+    """Clean per-item rows from the item-stats endpoint, best win rate first."""
+    rows = []
+    for row in item_stats:
+        item = items.get(row["item_id"])
+        if item is None or row.get("matches", 0) < min_matches:
+            continue
+        rows.append({
+            "item_id": row["item_id"],
+            "name": item["name"],
+            "slot": item["slot"],
+            "tier": item["tier"],
+            "win_rate": row["wins"] / row["matches"] * 100,
+            "matches": row["matches"],
+            "players": row.get("players", 0),
+        })
+    return sorted(rows, key=lambda r: r["win_rate"], reverse=True)
+
+
 def hero_rows(hero_stats: list[dict], min_games: int = 1) -> list[dict]:
     """Clean per-hero rows from the hero-stats endpoint, most played first."""
     rows = []
