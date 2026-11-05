@@ -1,2 +1,4 @@
-# Used by Railway (and anyone else) to install the bot
-.[bot]
+# Runtime dependencies for the Discord bot (used by Railway).
+# For local development use: pip install -e ".[dev]"
+discord.py>=2.4
+httpx>=0.27
