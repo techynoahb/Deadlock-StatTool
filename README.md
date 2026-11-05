@@ -40,6 +40,39 @@ Every command also takes an account ID (or SteamID64) to look up someone else:
 deadlock summary 123456789
 ```
 
+## Discord bot
+
+The same stats are available as a Discord bot, so a server can check each other's games.
+
+| Command | What it does |
+|---|---|
+| `/link <account>` | Link your Deadlock account (account ID, SteamID64, or Steam name) |
+| `/stats [user]` | Rank, win rate, KDA, top heroes, and recent form |
+| `/recent [user] [count]` | Last 1-10 matches |
+| `/heroes [user]` | Per-hero stats, most played first |
+| `/hero <name> [user]` | Stats on one hero (with name autocomplete) |
+| `/search <name>` | Find an account ID by Steam name |
+| `/unlink` | Forget your linked account |
+
+Every stats command also takes `account:` to look up any account ID.
+
+### Running it
+
+1. Create an application at the [Discord Developer Portal](https://discord.com/developers/applications),
+   add a bot, and copy its token.
+2. Invite it to your server: OAuth2 → URL Generator → scopes `bot` and `applications.commands`,
+   permissions `Send Messages` and `Embed Links`.
+3. Configure and run:
+
+```bash
+pip install -e ".[bot]"
+cp .env.example .env      # paste your token; DEV_GUILD_ID makes commands appear instantly
+deadlock-bot
+```
+
+Linked accounts are stored in a local SQLite file (`deadlock_bot.db`). Player data is cached
+in memory for two minutes so repeated commands don't hammer the community API.
+
 ## How it's organized
 
 | File | Job |
@@ -49,6 +82,9 @@ deadlock summary 123456789
 | `src/deadlock_cli/main.py` | The commands and table output (Typer + Rich) |
 | `src/deadlock_cli/config.py` | Saves your default account in `~/.config/deadlock-cli/` |
 | `src/deadlock_cli/draft.py` | The draft win predictor: a logistic-regression hero rating model |
+| `src/deadlock_bot/bot.py` | Discord slash commands; calls the same `api.py` and `stats.py` |
+| `src/deadlock_bot/embeds.py` | Turns stats into Discord embeds (no network, unit tested) |
+| `src/deadlock_bot/storage.py` | SQLite table of Discord user → Deadlock account |
 
 ## Tests
 

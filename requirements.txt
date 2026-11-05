@@ -1,0 +1,2 @@
+# Used by Railway (and anyone else) to install the bot
+.[bot]
