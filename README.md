@@ -1,5 +1,7 @@
 # deadlock-cli
 
+[![CI](https://github.com/techynoahb/Deadlock-StatTool/actions/workflows/ci.yml/badge.svg)](https://github.com/techynoahb/Deadlock-StatTool/actions/workflows/ci.yml)
+
 Check your [Deadlock](https://store.steampowered.com/app/1422450/Deadlock/) stats from the terminal.
 
 Data comes from the free community [Deadlock API](https://api.deadlock-api.com/docs).
