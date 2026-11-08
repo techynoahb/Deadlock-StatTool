@@ -1,13 +1,4 @@
-"""Deadlock stats Discord bot.
-
-Slash commands:
-  /link <account>       save your Deadlock account (ID, SteamID64, or Steam name)
-  /unlink               forget your account
-  /stats [user]         overall stats, rank, top heroes, recent form
-  /recent [user] [n]    last n matches
-  /heroes [user]        per-hero stats
-  /hero <name> [user]   stats on one hero
-  /search <name>        find an account ID by Steam name
+"""Deadlock stats Discord bot (commands are listed in the README).
 
 Run with:  DISCORD_TOKEN=... deadlock-bot
 """
@@ -28,7 +19,7 @@ from deadlock_cli import stats
 from deadlock_cli.api import APIError, DeadlockAPI
 
 from . import embeds
-from .storage import LinkStore
+from .storage import DEFAULT_DB, LinkStore
 
 log = logging.getLogger("deadlock_bot")
 
@@ -269,7 +260,7 @@ def main() -> None:
     if not token:
         raise SystemExit("Set DISCORD_TOKEN (in your environment or a .env file).")
     guild = os.environ.get("DEV_GUILD_ID")
-    store = LinkStore(os.environ.get("DEADLOCK_BOT_DB", "deadlock_bot.db"))
+    store = LinkStore(os.environ.get("DEADLOCK_BOT_DB", DEFAULT_DB))
     bot = DeadlockBot(store, dev_guild_id=int(guild) if guild else None)
     bot.run(token, log_handler=None)
 

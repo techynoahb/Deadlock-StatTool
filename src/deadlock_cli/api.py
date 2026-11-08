@@ -1,7 +1,7 @@
 """Small client for the community Deadlock API (https://api.deadlock-api.com/docs).
 
 Every function here only fetches data. All the math lives in stats.py, so it can be
-tested without the network and reused later by the coach and ML commands.
+tested without the network.
 """
 
 from __future__ import annotations
@@ -87,16 +87,13 @@ class DeadlockAPI:
         average team badge falls in that range. Both use the same time window, so the
         numbers line up for comparison.
         """
-        params: dict[str, Any] = {}
-        if account_id is not None:
-            params["account_ids"] = account_id
-        if min_badge is not None:
-            params["min_average_badge"] = min_badge
-        if max_badge is not None:
-            params["max_average_badge"] = max_badge
-        if since_unix is not None:
-            params["min_unix_timestamp"] = since_unix
-        return self._get("/v1/analytics/hero-stats", **params)
+        params = {
+            "account_ids": account_id,
+            "min_average_badge": min_badge,
+            "max_average_badge": max_badge,
+            "min_unix_timestamp": since_unix,
+        }
+        return self._get("/v1/analytics/hero-stats", **{k: v for k, v in params.items() if v is not None})
 
     def hero_counter_stats(self, min_matches: int = 50, since_unix: int | None = None) -> list[dict]:
         """Win rate for every (hero, enemy hero) pair that's faced off enough. Bulk data, cached a day."""
