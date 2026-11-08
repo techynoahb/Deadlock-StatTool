@@ -9,8 +9,9 @@ import asyncio
 import logging
 import os
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 import discord
 from discord import app_commands
@@ -94,7 +95,7 @@ class DeadlockBot(discord.Client):
         return await asyncio.to_thread(self.api.rank_names)
 
     def resolve_target(
-        self, caller: discord.abc.User, user: Optional[discord.abc.User], account: Optional[str]
+        self, caller: discord.abc.User, user: discord.abc.User | None, account: str | None
     ) -> tuple[int, str]:
         """Work out whose stats to show: an explicit account ID, a mentioned user, or the caller."""
         if account:
@@ -160,8 +161,8 @@ def register_commands(bot: DeadlockBot) -> None:
     @app_commands.describe(user="Whose stats (defaults to you)", account="Look up any account ID instead")
     async def stats_cmd(
         interaction: discord.Interaction,
-        user: Optional[discord.User] = None,
-        account: Optional[str] = None,
+        user: discord.User | None = None,
+        account: str | None = None,
     ):
         async def work():
             account_id, name = bot.resolve_target(interaction.user, user, account)
@@ -176,9 +177,9 @@ def register_commands(bot: DeadlockBot) -> None:
     @app_commands.describe(user="Whose matches (defaults to you)", count="How many (1-10)", account="Any account ID")
     async def recent(
         interaction: discord.Interaction,
-        user: Optional[discord.User] = None,
+        user: discord.User | None = None,
         count: app_commands.Range[int, 1, 10] = 5,
-        account: Optional[str] = None,
+        account: str | None = None,
     ):
         async def work():
             account_id, name = bot.resolve_target(interaction.user, user, account)
@@ -193,9 +194,9 @@ def register_commands(bot: DeadlockBot) -> None:
     @app_commands.describe(user="Whose stats (defaults to you)", min_games="Hide heroes with fewer games")
     async def heroes(
         interaction: discord.Interaction,
-        user: Optional[discord.User] = None,
+        user: discord.User | None = None,
         min_games: app_commands.Range[int, 1, 500] = 1,
-        account: Optional[str] = None,
+        account: str | None = None,
     ):
         async def work():
             account_id, name = bot.resolve_target(interaction.user, user, account)
@@ -209,8 +210,8 @@ def register_commands(bot: DeadlockBot) -> None:
     async def hero(
         interaction: discord.Interaction,
         name: str,
-        user: Optional[discord.User] = None,
-        account: Optional[str] = None,
+        user: discord.User | None = None,
+        account: str | None = None,
     ):
         async def work():
             names = await bot.hero_names()

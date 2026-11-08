@@ -7,11 +7,11 @@ import pytest
 
 pytest.importorskip("discord")
 
+from test_cli import HERO_STATS, MATCHES
+
 from deadlock_bot import embeds
 from deadlock_bot.bot import DeadlockBot, NotLinked, TTLCache
 from deadlock_bot.storage import LinkStore
-
-from test_cli import HERO_STATS, MATCHES
 
 HEROES = {1: "Infernus", 7: "Haze"}
 RANKS = {8: "Ascendant"}

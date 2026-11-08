@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from datetime import datetime
-from typing import NoReturn, Optional
+from typing import NoReturn
 
 import typer
 from rich.console import Console
@@ -31,7 +31,7 @@ AccountArg = typer.Argument(
 )
 
 
-def resolve_account(account: Optional[str]) -> int:
+def resolve_account(account: str | None) -> int:
     if account:
         try:
             return stats.to_account_id(account)
@@ -112,7 +112,7 @@ def set_me(account: str = typer.Argument(..., help="Your Steam account ID or Ste
 
 @app.command()
 def recent(
-    account: Optional[str] = AccountArg,
+    account: str | None = AccountArg,
     count: int = typer.Option(10, "--count", "-n", help="How many matches to show."),
 ):
     """Show your most recent matches."""
@@ -153,7 +153,7 @@ def recent(
 
 @app.command()
 def heroes(
-    account: Optional[str] = AccountArg,
+    account: str | None = AccountArg,
     min_games: int = typer.Option(3, "--min-games", "-m", help="Hide heroes with fewer games."),
 ):
     """Show your stats on each hero you've played."""
@@ -193,7 +193,7 @@ def heroes(
 
 @app.command()
 def summary(
-    account: Optional[str] = AccountArg,
+    account: str | None = AccountArg,
     count: int = typer.Option(50, "--count", "-n", help="How many recent matches to include."),
 ):
     """Overview of your recent form: win rate, KDA, rank, top heroes, and trend."""
@@ -246,10 +246,10 @@ def summary(
 
 @app.command()
 def coach(
-    hero: Optional[str] = typer.Argument(None, help="Hero name, e.g. Haze. Defaults to your most played.", show_default=False),
-    account: Optional[str] = typer.Option(None, "--account", "-a", help="Account ID. Defaults to your saved one."),
+    hero: str | None = typer.Argument(None, help="Hero name, e.g. Haze. Defaults to your most played.", show_default=False),
+    account: str | None = typer.Option(None, "--account", "-a", help="Account ID. Defaults to your saved one."),
     days: int = typer.Option(30, "--days", "-d", help="How many days of matches to compare."),
-    tier: Optional[int] = typer.Option(None, "--tier", "-t", help="Compare against this rank tier (1-11) instead of your own."),
+    tier: int | None = typer.Option(None, "--tier", "-t", help="Compare against this rank tier (1-11) instead of your own."),
 ):
     """Compare your stats on a hero to the average player at your rank."""
     account_id = resolve_account(account)
@@ -338,7 +338,7 @@ def coach(
 @app.command()
 def items(
     hero: str = typer.Argument(..., help="Hero name, e.g. Haze."),
-    vs: Optional[str] = typer.Option(None, "--vs", help="Comma-separated enemy heroes to narrow the matchup."),
+    vs: str | None = typer.Option(None, "--vs", help="Comma-separated enemy heroes to narrow the matchup."),
     min_matches: int = typer.Option(30, "--min-matches", help="Hide items with fewer matches."),
     top: int = typer.Option(15, "--top", help="How many items to show."),
     days: int = typer.Option(90, "--days", "-d", help="How many days of matches to include."),
