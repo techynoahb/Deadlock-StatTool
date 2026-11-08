@@ -103,6 +103,10 @@ def current_rank_badge(matches: list[dict]) -> int | None:
     return None
 
 
+def hero_name(hero_id: int, names: dict[int, str]) -> str:
+    return names.get(hero_id, f"Hero {hero_id}")
+
+
 def find_hero(query: str, names: dict[int, str]) -> int | None:
     """Match a hero by name, case-insensitive. Exact match wins, then a unique prefix."""
     q = query.strip().lower()

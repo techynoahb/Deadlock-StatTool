@@ -16,10 +16,6 @@ def error_embed(message: str) -> discord.Embed:
     return discord.Embed(description=message, color=ERROR_COLOR)
 
 
-def _hero(hero_id: int, heroes: dict[int, str]) -> str:
-    return heroes.get(hero_id, f"Hero {hero_id}")
-
-
 def summary_embed(
     name: str,
     matches: list[dict],
@@ -49,7 +45,7 @@ def summary_embed(
     top = stats.most_played(matches, top=3)
     if top:
         lines = [
-            f"**{_hero(h, heroes)}**: {g} games, {w / g * 100:.0f}% WR" for h, g, w in top
+            f"**{stats.hero_name(h, heroes)}**: {g} games, {w / g * 100:.0f}% WR" for h, g, w in top
         ]
         embed.add_field(name="Most played", value="\n".join(lines), inline=False)
 
@@ -77,7 +73,7 @@ def recent_embed(name: str, matches: list[dict], heroes: dict[int, str]) -> disc
         k, d, a = m["player_kills"], m["player_deaths"], m["player_assists"]
         minutes = m["match_duration_s"] // 60
         lines.append(
-            f"{icon} **{_hero(m['hero_id'], heroes)}** {k}/{d}/{a} · "
+            f"{icon} **{stats.hero_name(m['hero_id'], heroes)}** {k}/{d}/{a} · "
             f"{stats.souls_per_min(m):,.0f} souls/min · {minutes}m · `{m['match_id']}`"
         )
     embed.add_field(name="Matches", value="\n".join(lines) or "None", inline=False)
@@ -93,7 +89,7 @@ def heroes_embed(
         embed.description = "No hero stats found."
         return embed
     lines = [
-        f"**{_hero(r['hero_id'], heroes)}**: {r['games']} games · {r['win_rate']:.0f}% WR · "
+        f"**{stats.hero_name(r['hero_id'], heroes)}**: {r['games']} games · {r['win_rate']:.0f}% WR · "
         f"{r['kda']:.2f} KDA · {r['souls_per_min']:,.0f} souls/min"
         for r in rows
     ]
@@ -103,7 +99,7 @@ def heroes_embed(
 
 def hero_embed(name: str, hero_id: int, hero_stats: list[dict], heroes: dict[int, str]) -> discord.Embed:
     """Detailed stats for one hero."""
-    hero_name = _hero(hero_id, heroes)
+    hero_name = stats.hero_name(hero_id, heroes)
     row = next((r for r in stats.hero_rows(hero_stats) if r["hero_id"] == hero_id), None)
     embed = discord.Embed(title=f"{name} on {hero_name}", color=NEUTRAL_COLOR)
     if row is None:

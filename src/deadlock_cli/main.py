@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from datetime import datetime
-from typing import Optional
+from typing import NoReturn, Optional
 
 import typer
 from rich.console import Console
@@ -45,23 +45,23 @@ def resolve_account(account: Optional[str]) -> int:
     return saved
 
 
-def fail(error: APIError) -> None:
+def fail(error: APIError) -> NoReturn:
     console.print(f"[red]Error:[/] {error}")
     raise typer.Exit(1)
 
 
+def resolve_hero(name: str, names: dict[int, str]) -> int:
+    """Hero name -> hero ID. Exits with a clear message on a bad name."""
+    hero_id = stats.find_hero(name, names)
+    if hero_id is None:
+        console.print(f"[red]Couldn't find a hero called '{name}'.[/]")
+        raise typer.Exit(1)
+    return hero_id
+
+
 def resolve_heroes(raw: str, names: dict[int, str]) -> list[int]:
-    """Comma-separated hero names -> hero IDs. Exits with a clear message on a bad name."""
-    hero_ids = []
-    for name in (n.strip() for n in raw.split(",")):
-        if not name:
-            continue
-        hero_id = stats.find_hero(name, names)
-        if hero_id is None:
-            console.print(f"[red]Couldn't find a hero called '{name}'.[/]")
-            raise typer.Exit(1)
-        hero_ids.append(hero_id)
-    return hero_ids
+    """Comma-separated hero names -> hero IDs."""
+    return [resolve_hero(n, names) for n in (n.strip() for n in raw.split(",")) if n]
 
 
 def result_text(won: bool) -> str:
@@ -140,7 +140,7 @@ def recent(
         minutes, seconds = divmod(m["match_duration_s"], 60)
         table.add_row(
             datetime.fromtimestamp(m["start_time"]).strftime("%b %d %H:%M"),
-            heroes.get(m["hero_id"], f"Hero {m['hero_id']}"),
+            stats.hero_name(m["hero_id"], heroes),
             result_text(stats.is_win(m)),
             f"{m['player_kills']} / {m['player_deaths']} / {m['player_assists']}",
             f"{stats.kda(m['player_kills'], m['player_deaths'], m['player_assists']):.2f}",
@@ -179,7 +179,7 @@ def heroes(
     table.add_column("Last played")
     for r in rows:
         table.add_row(
-            names.get(r["hero_id"], f"Hero {r['hero_id']}"),
+            stats.hero_name(r["hero_id"], names),
             str(r["games"]),
             pct_color(r["win_rate"]),
             f"{r['kda']:.2f}",
@@ -227,7 +227,7 @@ def summary(
     console.print("\n[bold]Most played[/]")
     for hero_id, games, wins in stats.most_played(matches):
         console.print(
-            f"  {names.get(hero_id, f'Hero {hero_id}'):<14} {games:>3} games  {pct_color(wins / games * 100)}"
+            f"  {stats.hero_name(hero_id, names):<14} {games:>3} games  {pct_color(wins / games * 100)}"
         )
 
     # Trend: last 10 games against the rest of the window
@@ -269,20 +269,17 @@ def coach(
 
     # Which hero
     if hero:
-        hero_id = stats.find_hero(hero, names)
-        if hero_id is None:
-            console.print(f"[red]Couldn't find a hero called '{hero}'.[/]")
-            raise typer.Exit(1)
+        hero_id = resolve_hero(hero, names)
         if hero_id not in my_by_hero:
             console.print(f"You haven't played {names[hero_id]} in the last {days} days.")
             raise typer.Exit(1)
     else:
         hero_id = max(my_by_hero, key=lambda h: my_by_hero[h]["matches"])
-    hero_name = names.get(hero_id, f"Hero {hero_id}")
+    hero_name = stats.hero_name(hero_id, names)
 
     # Which rank bracket
     if tier is not None:
-        low, high = tier * 10, tier * 10 + 9
+        low, high = stats.badge_range(tier * 10)
     else:
         try:
             badge = stats.current_rank_badge(api.match_history(account_id))
@@ -353,10 +350,7 @@ def items(
         names = api.hero_names()
     except APIError as e:
         fail(e)
-    hero_id = stats.find_hero(hero, names)
-    if hero_id is None:
-        console.print(f"[red]Couldn't find a hero called '{hero}'.[/]")
-        raise typer.Exit(1)
+    hero_id = resolve_hero(hero, names)
     enemy_ids = resolve_heroes(vs, names) if vs else None
 
     try:
@@ -418,7 +412,7 @@ def draft(
     table.add_column("Rating", justify="right")
     for r in draft_model.rating_breakdown(ratings, ally_ids, enemy_ids):
         side_text = "[cyan]Ally[/]" if r["side"] == "ally" else "[magenta]Enemy[/]"
-        table.add_row(names.get(r["hero_id"], f"Hero {r['hero_id']}"), side_text, f"{r['rating']:+.2f}")
+        table.add_row(stats.hero_name(r["hero_id"], names), side_text, f"{r['rating']:+.2f}")
     console.print(table)
     console.print(
         f"\n[dim]Based on hero-vs-hero win rates over the last {days} days. "
