@@ -101,9 +101,11 @@ class DeadlockAPI:
     def hero_counter_stats(self, min_matches: int = 50, since_unix: int | None = None) -> list[dict]:
         """Win rate for every (hero, enemy hero) pair that's faced off enough. Bulk data, cached a day."""
         params: dict[str, Any] = {"min_matches": min_matches}
+        name = f"hero_counter_stats_{min_matches}"
         if since_unix is not None:
             params["min_unix_timestamp"] = since_unix
-        return self._cached("hero_counter_stats", "/v1/analytics/hero-counter-stats", **params)
+            name += f"_{since_unix // 86400}"  # key by day: the exact timestamp changes every second
+        return self._cached(name, "/v1/analytics/hero-counter-stats", **params)
 
     def item_stats(
         self,

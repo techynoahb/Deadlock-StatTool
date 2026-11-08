@@ -257,3 +257,18 @@ def test_draft(runner):
 def test_draft_unknown_hero(runner):
     result = runner.invoke(main.app, ["draft", "--allies", "nobody", "--enemies", "wraith"])
     assert result.exit_code == 1 and "Couldn't find" in result.output
+
+
+def test_counter_stats_cache_is_keyed_by_options(monkeypatch, tmp_path):
+    from deadlock_cli import api as api_module
+
+    monkeypatch.setattr(api_module, "CACHE_DIR", tmp_path)
+    calls = []
+    client = api_module.DeadlockAPI()
+    monkeypatch.setattr(client, "_get", lambda path, **params: calls.append(params) or [params])
+
+    client.hero_counter_stats(min_matches=50, since_unix=86400 * 10)
+    client.hero_counter_stats(min_matches=50, since_unix=86400 * 10 + 5)  # same day: cached
+    client.hero_counter_stats(min_matches=500, since_unix=86400 * 10)
+    client.hero_counter_stats(min_matches=50, since_unix=86400 * 40)
+    assert len(calls) == 3
