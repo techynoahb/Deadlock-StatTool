@@ -10,6 +10,8 @@ DEFAULT_DB = Path("deadlock_bot.db")
 
 class LinkStore:
     def __init__(self, path: str | Path = DEFAULT_DB):
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)  # e.g. /data on a fresh volume
         self.conn = sqlite3.connect(str(path))
         self.conn.execute(
             """CREATE TABLE IF NOT EXISTS links (
