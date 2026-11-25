@@ -82,3 +82,16 @@ pytest
 ```
 
 Tests run offline against fake data shaped like real API responses. CI runs both on every push.
+
+## Roadmap
+
+Planned features (maybe)
+
+| Feature | Idea |
+|---|---|
+| **AI chat assistant** | Ask things like "what changed for Haze last patch?" and get answers from the actual patch notes, using retrieval (RAG) instead of guesses |
+| **Web app** | The same stats, coaching, and draft predictor in a browser, so you don't need the CLI or Discord |
+| **Deadlock MCP server** | Expose the stats and draft tools over the [Model Context Protocol](https://modelcontextprotocol.io) so you can use them from your own local AI agents (Claude Desktop, Claude Code, Cursor and many others) |
+
+If you have any ideas feel free too [Open an issue](https://github.com/techynoahb/Deadlock-StatTool/issues).
+
